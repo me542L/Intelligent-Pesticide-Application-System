@@ -1,11 +1,15 @@
 from flask import Flask, request, jsonify
+from ultralytics import YOLO
 import cv2
 import numpy as np
-from ultralytics import YOLO
 from utils.metrics import infection_percentage, spray_level_from_pct
+from pyngrok import ngrok
+
+# Load trained model
+MODEL_PATH = "runs/segment/train/weights/best.pt"
+model = YOLO(MODEL_PATH)
 
 app = Flask(__name__)
-model = YOLO("runs/segment/train/weights/best.pt")
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -24,9 +28,15 @@ def predict():
         x1, y1, x2, y2 = bbox
         pct = infection_percentage(mask, bbox=(x1, y1, x2 - x1, y2 - y1))
         level = spray_level_from_pct(pct)
-        return jsonify({"infection_percent": pct, "recommendation": level})
+        return jsonify({"infection_percent": float(pct), "recommendation": level})
 
-    return jsonify({"infection_percent": 0, "recommendation": "Healthy"})
+    return jsonify({"infection_percent": 0.0, "recommendation": "Healthy"})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # 🔗 Create a public tunnel so you can access it from your browser
+    public_url = ngrok.connect(5000).public_url
+    print("🌐 Public URL:", public_url)
+    app.run(port=5000)
+
+
+  
